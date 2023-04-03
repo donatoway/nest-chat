@@ -7,10 +7,16 @@ const messages = ref([]);
 const name = ref('');
 const messageText = ref('');
 const joined = ref(false);
+const privateChat = ref(false);
 const ChatRoom = ref('');
-const Password = ref(undefined)
+const useToSilent = ref(undefined);
+const userToBan = ref(undefined);
+const userToUnBan = ref(undefined);
+const Password = ref(undefined);
 const PasswordToJoin = ref(undefined)
 const AdminsVal = ref(undefined);
+const destUser = ref(undefined);
+const timer  = ref(0);
 let joinOrcreate = ref('');
 
 async function addAdmins() {
@@ -25,7 +31,6 @@ async function addAdmins() {
         console.log(error);
     }
 }
-
 
 async function getUsers() {
     let url = 'http://localhost:3000/getUserIdentity';
@@ -82,6 +87,53 @@ const AddAdmins = async () => {
   const Admin = await addAdmins();
 }
 
+const muteOn = async () => {
+  socket.emit('muteOn', {channel: ChatRoom.value,
+                            useToSilent: useToSilent.value,
+                            name: name.value,
+                            timer: timer.value}, () => {
+  }) 
+}
+
+const muteOff = async () => {
+  socket.emit('muteOff', {channel: ChatRoom.value,
+                            useToSilent: useToSilent.value,
+                            name: name.value}, () => {
+  }) 
+}
+
+const banOff = async () => {
+  socket.emit('banOff', {channel: ChatRoom.value,
+                            userToUnBan: userToUnBan.value,
+                            name: name.value}, () => {
+  }) 
+}
+
+
+const banUser = async () => {
+    socket.emit('banUser', { channel: ChatRoom.value,
+                userToBan: userToBan.value,
+                name: name.value,
+                timer: timer.value,
+    })
+  }
+
+const disconnectFun = async () => {
+  socket.emit('leaveChannel', {channel: ChatRoom.value, name: name.value}, () => {
+  }) 
+}
+
+const prvChatOn = () => {
+  privateChat.value = true;
+}
+
+const directMessage = async () => {
+ // const nome = await getUsers();
+  socket.emit('directMessage', {text: messageText.value, name: name.value, dest: destUser.value}, () => {
+    messageText.value = '';
+  })
+}
+
 </script>
 
 <template>
@@ -99,7 +151,7 @@ const AddAdmins = async () => {
     <div>
       <form>
         <label>type join if u want join a room or
-          create if u want create one room
+          create if u want create one room or direct to send a direct mex
         </label>
       <input v-model="joinOrcreate">
       <button type="submit">send</button> 
@@ -129,6 +181,15 @@ const AddAdmins = async () => {
       <button type="submit">Send</button>
     </form>
   </div>
+  <div v-if="joinOrcreate == 'direct'">
+      <form @submit.prevent="prvChatOn">
+        <label>your Username</label>
+        <input v-model="name">
+        <label>destination</label>
+        <input v-model="destUser">
+        <button type="submit">Send</button>
+      </form>
+    </div>
 
   <div class="Admins" v-if="joined">
     <form @submit.prevent="AddAdmins">
@@ -137,8 +198,48 @@ const AddAdmins = async () => {
       <button type="submit">Send</button>
     </form>
   </div>
+  <div class="disconnect" v-if="joined">
+    <form @submit.prevent="disconnectFun">
+      <label>disconnect</label>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+  <div class="silentUser" v-if="joined">
+    <form @submit.prevent="muteOn">
+      <label>silent user</label>
+      <input v-model="useToSilent">
+      <label>minutes</label>
+      <input v-model="timer">
+      <button type="submit">Send</button>
+    </form>
+  </div>
 
+  <div class="banUser" v-if="joined">
+    <form @submit.prevent="banUser">
+      <label>ban user</label>
+      <input v-model="userToBan">
+      <label>minutes</label>
+      <input v-model="timer">
+      <button type="submit">Send</button>
+    </form>
+  </div>
 
+  <div class="unBan" v-if="joined">
+    <form @submit.prevent="banOff">
+      <label>ban off</label>
+      <input v-model="userToUnBan">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+
+  <div class="unMute" v-if="joined">
+    <form @submit.prevent="muteOff">
+      <label>mute off</label>
+      <input v-model="useToSilent">
+      <button type="submit">Send</button>
+    </form>
+  </div>
+  
     <div class="chat-container" v-if="joined">
       <div>ChatRoom: {{ChatRoom}}</div>
         <div class="message-container">
@@ -146,8 +247,7 @@ const AddAdmins = async () => {
             [{{message.name }}]: {{ message.text }}
           </div>
         </div>
-
-      <div class="messageInput">
+      <div class="messageInput" v-if="joined">
         <form @submit.prevent="sendMessage">
           <label>Message:</label>
           <input v-model="messageText"/>
@@ -156,7 +256,21 @@ const AddAdmins = async () => {
       </div>
     </div>
 
-
+    <div class="directChat" v-if="privateChat">
+      <div>direct message: </div>
+        <div class="message-container">
+          <div v-for="message in messages">
+            [{{message.name }}]: {{ message.text }}
+          </div>
+        </div>
+      <div class="messageInputDirect" v-if="privateChat">
+          <form @submit.prevent="directMessage">
+            <label>Message:</label>
+            <input v-model="messageText"/>
+            <button type="submit">Send</button>
+          </form>
+      </div>
+    </div>
  </div>
 </template>
 <style>
