@@ -20,12 +20,20 @@ const timer  = ref(0);
 let joinOrcreate = ref('');
 
 async function addAdmins() {
-    let url = 'http://localhost:3000/messages/admin';
+    let url = 'http://localhost:3000/admin';
     try {
-        let res = await fetch(url, {credentials: 'include',headers: {
-                        channel : ChatRoom.value, 
-                        Admin: AdminsVal.value 
-        }});
+        let res = await fetch(url, {method:'GET', redirect:'follow', mode:'no-cors'
+        });
+        return await res.json();
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+async function log() {
+    let url = 'http://localhost:3000/users';
+    try {
+        let res = await fetch(url);
         return await res.json();
     } catch (error) {
         console.log(error);
@@ -41,6 +49,7 @@ async function getUsers() {
         console.log(error);
     }
 }
+
 
 onBeforeMount(() => {
  /*socket.emit('findAllMessages', {}, (response) => {
@@ -124,7 +133,9 @@ const disconnectFun = async () => {
 }
 
 const prvChatOn = () => {
-  privateChat.value = true;
+  socket.emit('online', {name: name.value}, () => {
+    privateChat.value = true;
+  })
 }
 
 const directMessage = async () => {
@@ -157,7 +168,9 @@ const directMessage = async () => {
       <button type="submit">send</button> 
     </form>
     </div>
-
+    <div v-if="joinOrcreate == 'show'">
+      <button @click="show">click</button>
+    </div>
   <div v-if="joinOrcreate == 'create'">
     <form @submit.prevent="createRoom">
       <label>ChatRoom:</label>
@@ -185,8 +198,6 @@ const directMessage = async () => {
       <form @submit.prevent="prvChatOn">
         <label>your Username</label>
         <input v-model="name">
-        <label>destination</label>
-        <input v-model="destUser">
         <button type="submit">Send</button>
       </form>
     </div>
@@ -256,17 +267,20 @@ const directMessage = async () => {
       </div>
     </div>
 
-    <div class="directChat" v-if="privateChat">
+    <div class="directChat" v-if="privateChat == true">
       <div>direct message: </div>
-        <div class="message-container">
+        <div class="message-container2">
           <div v-for="message in messages">
-            [{{message.name }}]: {{ message.text }}
+            [name:{{message.name }}]: {{ message.text }}
+            [dest:{{ message.dest }}]
           </div>
         </div>
-      <div class="messageInputDirect" v-if="privateChat">
+      <div class="messageInputDirect" v-if="privateChat == true">
           <form @submit.prevent="directMessage">
             <label>Message:</label>
             <input v-model="messageText"/>
+            <label>destination</label>
+            <input v-model="destUser">
             <button type="submit">Send</button>
           </form>
       </div>
